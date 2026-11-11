@@ -8,6 +8,13 @@ import type { Passed, Save } from './storage';
 export const PASS_MARK = 0.8;
 export const SPEED_SECONDS = 60;
 
+const XP_PER_CORRECT = 10;
+const LESSON_BONUS = 20;
+const TRIAL_BONUS = 50;
+/** XP for content skipped by testing out: what scraping a pass would have earned. */
+export const SKIPPED_LESSON_XP = 4 * XP_PER_CORRECT + LESSON_BONUS;
+export const SKIPPED_TRIAL_XP = 10 * XP_PER_CORRECT + TRIAL_BONUS;
+
 export const RANKS = [
   { name: 'Tiro', xp: 0, note: 'Fresh recruit' },
   { name: 'Discipulus', xp: 100, note: 'Student' },
@@ -114,6 +121,8 @@ export interface Summary {
   passed: boolean;
   laurels: number;
   xp: number;
+  /** Part of `xp` credited for lessons and trials skipped by testing out. */
+  skippedXp?: number;
   newAchievements: string[];
   rankUp?: string;
   personalBest?: boolean;
@@ -159,29 +168,45 @@ export function applyResult(old: Save, result: QuizResult, now = new Date()): { 
     }
   }
 
-  let xp = correct * (result.kind === 'speed' ? 3 : graded ? 10 : 5);
+  let xp = correct * (result.kind === 'speed' ? 3 : graded ? XP_PER_CORRECT : 5);
 
   if (result.kind === 'lesson' && passed) {
-    const firstTime = !save.lessons[result.ref] || save.lessons[result.ref].testedOut;
+    // A lesson already credited by testing out has had its bonus paid.
+    const firstTime = !save.lessons[result.ref];
     save.lessons[result.ref] = better(save.lessons[result.ref], laurels, ratio, at);
-    if (firstTime) xp += 20;
+    if (firstTime) xp += LESSON_BONUS;
     grant('first');
   }
 
   if (result.kind === 'trial' && passed) {
     const gi = GROUPS.findIndex((g) => g.id === result.ref);
     const group = GROUPS[gi];
-    const firstTime = !save.trials[group.id] || save.trials[group.id].testedOut;
+    const firstTime = !save.trials[group.id];
     if (group.lessons.some((l) => !save.lessons[l.id])) grant('testout');
     save.trials[group.id] = better(save.trials[group.id], laurels, ratio, at);
-    // Passing a trial proves everything up to here, so credit it all.
+    // Passing a trial proves everything up to here, so credit it all: unlocks,
+    // plus the XP a bare pass of each skipped lesson and trial would have earned.
     const credit: Passed = { laurels: 0, best: 0, at, testedOut: true };
+    let skippedXp = 0;
     for (const g of GROUPS.slice(0, gi + 1)) {
-      save.trials[g.id] ??= { ...credit };
-      for (const l of g.lessons) save.lessons[l.id] ??= { ...credit };
+      if (!save.trials[g.id]) {
+        save.trials[g.id] = { ...credit };
+        skippedXp += SKIPPED_TRIAL_XP;
+      }
+      for (const l of g.lessons) {
+        if (!save.lessons[l.id]) {
+          save.lessons[l.id] = { ...credit };
+          skippedXp += SKIPPED_LESSON_XP;
+        }
+      }
+    }
+    if (skippedXp > 0) {
+      xp += skippedXp;
+      summary.skippedXp = skippedXp;
+      grant('first');
     }
     if (firstTime) {
-      xp += 50;
+      xp += TRIAL_BONUS;
       summary.unlocked = GROUPS[gi + 1] ? `Ludus ${GROUPS[gi + 1].num}: ${GROUPS[gi + 1].title}` : undefined;
     }
     if (ratio === 1) grant('perfect');

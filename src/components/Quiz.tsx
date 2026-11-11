@@ -239,7 +239,12 @@ function Results({ config, summary: s, onExit, onRetry }: { config: QuizConfig; 
           <p className="hint">You need {Math.round(PASS_MARK * 100)}% to pass. Every miss shows you what to review, so have another go.</p>
         )}
         <ul className="rewards">
-          {s.xp > 0 && <li className="xp">+{s.xp} XP</li>}
+          {s.xp > 0 && (
+            <li className="xp">
+              +{s.xp} XP
+              {!!s.skippedXp && <small>includes {s.skippedXp} XP for everything you tested out of</small>}
+            </li>
+          )}
           {s.rankUp && <li className="rank">Promoted to {s.rankUp}!</li>}
           {s.unlocked && <li className="unlock">Unlocked {s.unlocked}</li>}
           {s.newAchievements.map((id) => {

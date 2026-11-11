@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GROUPS, LESSONS } from '../src/lib/curriculum';
-import { applyResult, groupUnlocked, lessonUnlocked, practiceLevels, Answer } from '../src/lib/game';
+import { applyResult, groupUnlocked, lessonUnlocked, practiceLevels, Answer, SKIPPED_LESSON_XP, SKIPPED_TRIAL_XP } from '../src/lib/game';
 import { Dir, QType, fits, generateQuiz, pool, validateQuestion } from '../src/lib/generator';
 import { additiveForm, fromRoman, looseValue, parts, toRoman } from '../src/lib/roman';
 import { freshSave, parseImport, sanitize } from '../src/lib/storage';
@@ -123,6 +123,18 @@ describe('progress', () => {
     expect(groupUnlocked(r.save, GROUPS[4])).toBe(true);
     expect(lessonUnlocked(r.save, GROUPS[4].lessons[0])).toBe(true);
     expect(r.save.lessons['g2l1'].testedOut).toBe(true);
+    // 14 skipped lessons and 3 skipped earlier trials are paid as bare passes.
+    expect(r.summary.skippedXp).toBe(14 * SKIPPED_LESSON_XP + 3 * SKIPPED_TRIAL_XP);
+    expect(r.summary.xp).toBe(10 * 10 + 50 + r.summary.skippedXp!);
+    expect(r.summary.newAchievements).toContain('first');
+    // Replaying a skipped lesson earns laurels but not a second bonus.
+    const replay = applyResult(r.save, { kind: 'lesson', ref: 'g2l1', label: '', answers: answers(4, 5), ms: 1 });
+    expect(replay.summary.xp).toBe(40);
+    expect(replay.save.lessons['g2l1'].laurels).toBe(1);
+    // Retaking the same trial pays nothing extra for skipped content.
+    const again = applyResult(r.save, { kind: 'trial', ref: 'g4', label: '', answers: answers(10, 12), ms: 1 });
+    expect(again.summary.skippedXp).toBeUndefined();
+    expect(again.summary.xp).toBe(100);
     const fail = applyResult(freshSave(), { kind: 'trial', ref: 'g4', label: '', answers: answers(9, 12), ms: 1 });
     expect(groupUnlocked(fail.save, GROUPS[1])).toBe(false);
   });
