@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import type { Card, Lesson } from '../lib/curriculum';
 import { buzz, play } from '../lib/fx';
-import { looseValue, parts, symbolsFor, toRoman, tokenize, SYMBOL_VALUE } from '../lib/roman';
+import { looseValue, parts, symbolsFor, toRoman, tokenize, working, SYMBOL_VALUE } from '../lib/roman';
 import { Numeral, Pad } from './shared';
 
 interface CardProps<C> {
@@ -38,6 +38,7 @@ function TapCard({ card, onDone }: CardProps<Extract<Card, { t: 'tap' }>>) {
           >
             <b>{c.roman}</b>
             <i>{shown[i] ? c.value : '?'}</i>
+            {shown[i] && working(c.roman) && <small>{working(c.roman)}</small>}
           </button>
         ))}
       </div>
@@ -154,12 +155,72 @@ function PickCard({ card, onDone }: CardProps<Extract<Card, { t: 'pick' }>>) {
   );
 }
 
+/** One tile per symbol with its value underneath, joined by the operation that links them. */
+function Equation({ symbols, subtract }: { symbols: string[]; subtract: boolean }) {
+  return (
+    <div className={`equation ${subtract ? 'sub' : 'add'}`}>
+      {symbols.map((sym, i) => (
+        <Fragment key={i}>
+          {i > 0 && !subtract && <span className="op">+</span>}
+          <span className="eq-tile">
+            <b>{sym}</b>
+            <i>{subtract && i === 0 ? `− ${SYMBOL_VALUE[sym]}` : SYMBOL_VALUE[sym]}</i>
+          </span>
+        </Fragment>
+      ))}
+    </div>
+  );
+}
+
+function RuleCard({ card }: { card: Extract<Card, { t: 'rule' }> }) {
+  const symbols = card.numeral.split('');
+  const subtract = symbols.length === 2 && SYMBOL_VALUE[symbols[0]] < SYMBOL_VALUE[symbols[1]];
+  return (
+    <>
+      <h2>{card.title}</h2>
+      <Equation symbols={symbols} subtract={subtract} />
+      <p className={`eq-result ${subtract ? 'sub' : 'add'}`}>
+        {working(card.numeral)} = {looseValue(card.numeral)}
+      </p>
+      <p className="card-text">{card.text}</p>
+    </>
+  );
+}
+
+function FlipCard({ card, onDone }: CardProps<Extract<Card, { t: 'flip' }>>) {
+  const [smallFirst, setSmallFirst] = useState(false);
+  const numeral = smallFirst ? card.small + card.big : card.big + card.small;
+  const swap = () => {
+    play('tap');
+    buzz(12);
+    setSmallFirst((v) => !v);
+    onDone();
+  };
+  return (
+    <>
+      <p className="card-text">{card.text}</p>
+      <div key={numeral} className="flip-stage">
+        <Equation symbols={numeral.split('')} subtract={smallFirst} />
+      </div>
+      <p className={`eq-result ${smallFirst ? 'sub' : 'add'}`} aria-live="polite">
+        {numeral}: {working(numeral)} = {looseValue(numeral)}
+      </p>
+      <p className="hint">
+        {smallFirst ? `Smaller symbol BEFORE the bigger one: take it away.` : `Smaller symbol AFTER the bigger one: add it on.`}
+      </p>
+      <button type="button" className="btn secondary" onClick={swap}>
+        ⇄ Swap the symbols
+      </button>
+    </>
+  );
+}
+
 export function LessonPlayer({ lesson, onQuiz, onExit }: { lesson: Lesson; onQuiz: () => void; onExit: () => void }) {
   const [i, setI] = useState(0);
   const [done, setDone] = useState(false);
   const card = lesson.cards[i];
   const symbols = symbolsFor(lesson.level.tokens);
-  const passive = card.t === 'intro' || card.t === 'fact';
+  const passive = card.t === 'intro' || card.t === 'fact' || card.t === 'rule';
   const last = i === lesson.cards.length - 1;
   const next = () => {
     if (last) return onQuiz();
@@ -195,6 +256,8 @@ export function LessonPlayer({ lesson, onQuiz, onExit }: { lesson: Lesson; onQui
             <p className="card-text">{card.text}</p>
           </>
         )}
+        {card.t === 'rule' && <RuleCard card={card} />}
+        {card.t === 'flip' && <FlipCard card={card} {...props} />}
         {card.t === 'tap' && <TapCard card={card} {...props} />}
         {card.t === 'build' && <BuildCard card={card} {...props} />}
         {card.t === 'pick' && <PickCard card={card} {...props} />}

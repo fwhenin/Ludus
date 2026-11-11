@@ -6,6 +6,10 @@ import { ALL_TOKENS, SUBTRACTIVE, Token, toRoman } from './roman';
 export type Card =
   | { t: 'intro'; numeral: string; title: string; text: string }
   | { t: 'fact'; icon: string; title: string; text: string }
+  /** Shows the sum behind a short numeral, symbol by symbol (VI: 5 + 1 = 6). */
+  | { t: 'rule'; numeral: string; title: string; text: string }
+  /** Two symbols the learner swaps to see order turn adding into subtracting. */
+  | { t: 'flip'; small: string; big: string; text: string }
   /** Tap each chunk of the numeral to reveal its value. `each` splits into single building blocks rather than decimal places. */
   | { t: 'tap'; n: number; text: string; each?: boolean }
   /** Build the numeral for n with tiles. `wrong` shows a mistake to fix. */
@@ -81,6 +85,7 @@ const seeds: GroupSeed[] = [
         max: 8,
         cards: [
           { t: 'intro', numeral: 'V', title: 'Five gets its own symbol', text: 'Counting lots of strokes is slow. So five gets a shortcut: V. Some say it is the shape of an open hand, between thumb and fingers.' },
+          { t: 'rule', numeral: 'VI', title: 'The adding rule', text: 'When a smaller symbol comes AFTER a bigger one, you add it on. Read left to right and keep a running total: five, and one more, makes six.' },
           { t: 'tap', n: 7, each: true, text: 'Put smaller symbols after a bigger one and you add them. Tap each piece of VII.' },
           { t: 'build', n: 6, text: 'Build 6: start with five, then add one.' },
           { t: 'pick', q: 'What number is VIII?', options: ['5', '7', '8', '53'], answer: 2, why: 'V is 5, then three strokes: 5 + 3 = 8.' },
@@ -95,6 +100,7 @@ const seeds: GroupSeed[] = [
         max: 39,
         cards: [
           { t: 'intro', numeral: 'X', title: 'Ten is a cross', text: 'X means ten. One story says it is two Vs, one upside down under the other: two hands, ten fingers.' },
+          { t: 'rule', numeral: 'XVI', title: 'Add as you go', text: 'The same rule works with any number of symbols. As long as they run from biggest to smallest, just add them all up.' },
           { t: 'tap', n: 27, each: true, text: 'Always write the biggest symbols first, then work down. Tap each piece of XXVII.' },
           { t: 'build', n: 16, text: 'Build 16: a ten, a five, and a one.' },
           { t: 'pick', q: 'What number is XXXV?', options: ['35', '25', '15', '53'], answer: 0, why: 'Three tens and a five: 10 + 10 + 10 + 5 = 35.' },
@@ -117,6 +123,8 @@ const seeds: GroupSeed[] = [
         max: 39,
         cards: [
           { t: 'intro', numeral: 'IV', title: 'A clever shortcut', text: 'Here is the twist. When a smaller symbol comes BEFORE a bigger one, you subtract it. IV is "one before five": 5 − 1 = 4.' },
+          { t: 'rule', numeral: 'IV', title: 'The subtracting rule', text: 'Here the small symbol comes first. That is the signal to take it away from the bigger one that follows.' },
+          { t: 'flip', small: 'I', big: 'V', text: 'Same two symbols, two different numbers. Swap them and watch what the order does.' },
           { t: 'pick', q: 'VI and IV use the same symbols. Which one is 4?', options: ['VI', 'IV'], answer: 1, why: 'IV: the I comes first, so it is taken away (5 − 1). VI adds it on (5 + 1 = 6).' },
           { t: 'tap', n: 14, each: true, text: 'IV works as one chunk inside bigger numbers. Tap the two chunks of XIV.' },
           { t: 'build', n: 4, text: 'A mason carved this wrong. Fix it using the subtraction trick.', wrong: 'IIII' },
@@ -131,6 +139,7 @@ const seeds: GroupSeed[] = [
         max: 39,
         cards: [
           { t: 'intro', numeral: 'IX', title: 'Same trick, bigger number', text: 'Nine works the same way as four. IX is "one before ten": 10 − 1 = 9.' },
+          { t: 'flip', small: 'I', big: 'X', text: 'Swap the symbols. After the X, the I is added. Before the X, it is taken away.' },
           { t: 'pick', q: 'What number is XI?', options: ['9', '11', '10', '1'], answer: 1, why: 'The I comes AFTER the X, so add: 10 + 1 = 11. Flip it to IX and you get 9.' },
           { t: 'tap', n: 19, each: true, text: 'Tap the chunks of XIX. The first X is a plain ten; the IX is a nine.' },
           { t: 'build', n: 9, text: 'Fix the mason\'s mistake.', wrong: 'VIIII' },
@@ -181,6 +190,7 @@ const seeds: GroupSeed[] = [
         max: 89,
         cards: [
           { t: 'intro', numeral: 'XL', title: 'The trick scales up', text: 'XXXX would break the rule of three. So forty is "ten before fifty": XL = 50 − 10 = 40.' },
+          { t: 'flip', small: 'X', big: 'L', text: 'The same rule, ten times bigger. Swap the symbols to compare 60 and 40.' },
           { t: 'tap', n: 44, text: 'Two subtraction chunks side by side. Tap XL and IV.' },
           { t: 'build', n: 40, text: 'Fix the mason\'s mistake.', wrong: 'XXXX' },
           { t: 'pick', q: 'What number is XLIX?', options: ['49', '51', '69', '61'], answer: 0, why: 'XL is 40 and IX is 9: 40 + 9 = 49.' },
@@ -209,6 +219,7 @@ const seeds: GroupSeed[] = [
         max: 399,
         cards: [
           { t: 'intro', numeral: 'XC', title: 'Ninety', text: 'You can guess this one. Ninety is "ten before a hundred": XC = 100 − 10 = 90.' },
+          { t: 'flip', small: 'X', big: 'C', text: 'Swap the symbols to compare 110 and 90.' },
           { t: 'pick', q: 'Which is the right way to write 99?', options: ['IC', 'XCIX', 'LXXXXIX', 'XCVIIII'], answer: 1, why: 'Go place by place: 90 is XC, 9 is IX. You can only subtract from the next one or two symbols up, so IC is not allowed.' },
           { t: 'tap', n: 194, text: 'Tap the chunks of CXCIV.' },
           { t: 'build', n: 90, text: 'Fix the mason\'s mistake.', wrong: 'LXXXX' },
@@ -244,6 +255,7 @@ const seeds: GroupSeed[] = [
         max: 899,
         cards: [
           { t: 'intro', numeral: 'CD', title: 'Four hundred', text: 'No CCCC allowed. Four hundred is "a hundred before five hundred": CD = 500 − 100 = 400.' },
+          { t: 'flip', small: 'C', big: 'D', text: 'Swap the symbols to compare 600 and 400.' },
           { t: 'tap', n: 444, text: 'Three subtraction chunks in a row! Tap CD, XL and IV.' },
           { t: 'build', n: 400, text: 'Fix the mason\'s mistake.', wrong: 'CCCC' },
           { t: 'pick', q: 'What number is CDXC?', options: ['490', '610', '510', '390'], answer: 0, why: 'CD is 400 and XC is 90: 490.' },
@@ -272,6 +284,7 @@ const seeds: GroupSeed[] = [
         max: 3999,
         cards: [
           { t: 'intro', numeral: 'CM', title: 'The last piece', text: 'Nine hundred is "a hundred before a thousand": CM = 1000 − 100 = 900. With that you can write every number from 1 to 3999.' },
+          { t: 'flip', small: 'C', big: 'M', text: 'One last pair. Swap the symbols to compare 1100 and 900.' },
           { t: 'tap', n: 1994, text: 'Tap the four chunks of MCMXCIV.' },
           { t: 'build', n: 900, text: 'Fix the mason\'s mistake.', wrong: 'DCCCC' },
           { t: 'pick', q: 'What number is MCM?', options: ['2100', '1900', '2900', '1100'], answer: 1, why: 'M is 1000, then CM is 900: 1900.' },

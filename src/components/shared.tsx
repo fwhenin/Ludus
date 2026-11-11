@@ -1,4 +1,4 @@
-import { parts } from '../lib/roman';
+import { parts, working } from '../lib/roman';
 import { buzz, play } from '../lib/fx';
 
 /** A numeral shown as if carved into stone. Shrinks as it gets longer. */
@@ -19,7 +19,7 @@ export function Breakdown({ n }: { n: number }) {
       {ps.map((p, i) => (
         <span key={i} className="chunk">
           <b>{p.roman}</b>
-          <i>{p.value}</i>
+          <i>{p.roman.length === 2 && working(p.roman).includes('−') ? `${working(p.roman)} = ${p.value}` : p.value}</i>
         </span>
       ))}
       <span className="chunk total">

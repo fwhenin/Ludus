@@ -49,6 +49,11 @@ describe('curriculum', () => {
           expect(fromRoman(c.wrong)).toBeNull();
         }
         if (c.t === 'pick') expect(c.options[c.answer]).toBeDefined();
+        if (c.t === 'rule') expect(fits(fromRoman(c.numeral)!, { ...l.level, min: 1, minLen: undefined, max: 3999 }), `${l.id} ${c.numeral}`).toBe(true);
+        if (c.t === 'flip') {
+          expect(l.level.tokens, `${l.id} ${c.small}${c.big}`).toContain(c.small + c.big);
+          expect(fromRoman(c.big + c.small)).not.toBeNull();
+        }
       }
     }
   });

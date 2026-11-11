@@ -92,3 +92,11 @@ export function symbolsFor(tokens: readonly Token[]): string[] {
   const used = new Set(tokens.join('').split(''));
   return SYMBOLS.filter((s) => used.has(s));
 }
+
+/** The sum behind a multi-symbol chunk: IX -> "10 − 1", LXX -> "50 + 10 + 10". Empty for a single symbol. */
+export function working(roman: string): string {
+  const vals = roman.split('').map((ch) => SYMBOL_VALUE[ch]);
+  if (vals.length < 2) return '';
+  if (vals.length === 2 && vals[0] < vals[1]) return `${vals[1]} − ${vals[0]}`;
+  return vals.join(' + ');
+}
