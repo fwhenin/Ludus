@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SPEED_SECONDS, practiceLevels, weakWeights } from '../lib/game';
 import type { Dir, QType } from '../lib/generator';
+import { newRunId, readPracticePrefs, writePracticePrefs } from '../lib/nav';
 import type { Save } from '../lib/storage';
 import type { QuizConfig } from './Quiz';
 
@@ -24,11 +25,16 @@ function Choice<T extends string | number>({ label, value, options, onChange }: 
 export function Practice({ save, onStart }: { save: Save; onStart: (c: QuizConfig) => void }) {
   const levels = practiceLevels(save);
   const weights = weakWeights(save);
-  const [mode, setMode] = useState<Mode>('practice');
-  const [levelKey, setLevelKey] = useState(levels[levels.length - 1]?.key ?? '');
-  const [dir, setDir] = useState<Dir | 'mixed'>('mixed');
-  const [type, setType] = useState<QType | 'mixed'>('mixed');
-  const [count, setCount] = useState(10);
+  const [prefs] = useState(readPracticePrefs);
+  const [mode, setMode] = useState<Mode>(prefs.mode ?? 'practice');
+  const [levelKey, setLevelKey] = useState(
+    prefs.levelKey && levels.some((l) => l.key === prefs.levelKey) ? prefs.levelKey : (levels[levels.length - 1]?.key ?? ''),
+  );
+  const [dir, setDir] = useState<Dir | 'mixed'>(prefs.dir ?? 'mixed');
+  const [type, setType] = useState<QType | 'mixed'>(prefs.type ?? 'mixed');
+  const [count, setCount] = useState(prefs.count ?? 10);
+
+  useEffect(() => writePracticePrefs({ mode, levelKey, dir, type, count }), [mode, levelKey, dir, type, count]);
 
   if (levels.length === 0) {
     return (
@@ -46,9 +52,10 @@ export function Practice({ save, onStart }: { save: Save; onStart: (c: QuizConfi
     onStart({
       kind: mode,
       refId: chosen.key,
+      runId: newRunId(),
       title: `${name} · ${chosen.label}`,
       level: chosen.level,
-      opts: { dir, type: mode === 'speed' && type === 'mixed' ? 'mc' : type, count, weights: mode === 'weak' ? weights ?? undefined : undefined },
+      opts: { dir, type: mode === 'speed' && type === 'mixed' ? 'mc' : type, count },
     });
   };
 

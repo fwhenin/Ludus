@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GROUPS, LESSONS } from '../src/lib/curriculum';
-import { applyResult, groupUnlocked, lessonUnlocked, practiceLevels, Answer, SKIPPED_LESSON_XP, SKIPPED_TRIAL_XP } from '../src/lib/game';
+import { applyResult, currentStreak, streakAtRisk, groupUnlocked, lessonUnlocked, practiceLevels, Answer, SKIPPED_LESSON_XP, SKIPPED_TRIAL_XP } from '../src/lib/game';
 import { Dir, QType, fits, generateQuiz, pool, validateQuestion } from '../src/lib/generator';
 import { additiveForm, fromRoman, looseValue, parts, toRoman } from '../src/lib/roman';
 import { freshSave, parseImport, sanitize } from '../src/lib/storage';
@@ -163,5 +163,32 @@ describe('progress', () => {
     expect(parseImport(JSON.stringify(save))?.xp).toBe(save.xp);
     expect(parseImport('not json')).toBeNull();
     expect(parseImport('{"v":2}')).toBeNull();
+  });
+});
+
+describe('quality of life', () => {
+  it('flags a streak that will lapse unless the learner plays today', () => {
+    const save = freshSave();
+    save.streak = { count: 4, best: 4, last: '2026-03-09' };
+    expect(streakAtRisk(save, new Date(2026, 2, 10, 9))).toBe(4);
+    save.streak.last = '2026-03-10';
+    expect(streakAtRisk(save, new Date(2026, 2, 10, 9))).toBe(0);
+    save.streak.last = '2026-03-07';
+    expect(currentStreak(save, new Date(2026, 2, 10, 9))).toBe(0);
+    expect(streakAtRisk(save, new Date(2026, 2, 10, 9))).toBe(0);
+  });
+  it('keeps a valid theme and drops junk', () => {
+    const save = freshSave();
+    expect(save.settings.theme).toBe('system');
+    expect(sanitize({ ...save, settings: { ...save.settings, theme: 'dark' } })!.settings.theme).toBe('dark');
+    expect(sanitize({ ...save, settings: { ...save.settings, theme: 'neon' } })!.settings.theme).toBe('system');
+    const { settings: _drop, ...noSettings } = save;
+    expect(sanitize(noSettings)!.settings).toEqual({ sound: false, haptics: true, theme: 'system' });
+  });
+  it('puts every missed number into a review quiz', () => {
+    const level = GROUPS[1].trial;
+    const missed = pool(level).slice(0, 4);
+    const qs = generateQuiz({ ...level, include: missed }, { dir: 'mixed', type: 'mixed', count: 8, rng: rng(7) });
+    for (const n of missed) expect(qs.some((q) => q.n === n)).toBe(true);
   });
 });

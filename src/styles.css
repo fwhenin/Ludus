@@ -19,8 +19,9 @@
   --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color-scheme: light dark;
 }
+/* Dark palette: follows the device unless the learner picked a theme in Profile. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #1d1a17;
     --bg-2: #26221d;
     --card: #2b2722;
@@ -39,18 +40,46 @@
     --shadow: 0 2px 0 rgba(0, 0, 0, 0.3), 0 10px 24px -12px rgba(0, 0, 0, 0.7);
   }
 }
+:root[data-theme='dark'] {
+  --bg: #1d1a17;
+  --bg-2: #26221d;
+  --card: #2b2722;
+  --ink: #efe6d3;
+  --muted: #a99d88;
+  --line: #453e34;
+  --stone: #3d3830;
+  --stone-ink: #e9dfc9;
+  --purple: #d98aa6;
+  --gold: #e0b94a;
+  --gold-soft: #4a3f1d;
+  --green: #9cc277;
+  --green-soft: #2c3a22;
+  --red: #e8846c;
+  --red-soft: #47261e;
+  --shadow: 0 2px 0 rgba(0, 0, 0, 0.3), 0 10px 24px -12px rgba(0, 0, 0, 0.7);
+  color-scheme: dark;
+}
+:root[data-theme='light'] { color-scheme: light; }
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
   background: var(--bg);
-  background-image: radial-gradient(circle at 20% 0%, var(--bg-2), transparent 55%), radial-gradient(circle at 90% 100%, var(--bg-2), transparent 50%);
-  background-attachment: fixed;
   color: var(--ink);
   font: 16px/1.5 var(--sans);
 }
+/* A fixed layer instead of background-attachment: fixed, which iOS ignores and which janks scrolling. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(circle at 20% 0%, var(--bg-2), transparent 55%), radial-gradient(circle at 90% 100%, var(--bg-2), transparent 50%);
+}
 button, select, input { font: inherit; color: inherit; }
+[hidden] { display: none !important; }
 button { cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 button:disabled { cursor: not-allowed; }
 :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
@@ -61,10 +90,10 @@ h3 { font-size: 1rem; margin-top: 1.4em; }
 p { margin: 0 0 0.8em; }
 small { color: var(--muted); font-weight: 400; }
 
-.app { max-width: 760px; margin: 0 auto; padding: 0 16px 32px; min-height: 100vh; display: flex; flex-direction: column; }
+.app { max-width: 760px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-right)) calc(32px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); min-height: 100vh; display: flex; flex-direction: column; }
 main { flex: 1; }
 
-.topbar { display: flex; align-items: center; gap: 12px; padding: 14px 0; flex-wrap: wrap; }
+.topbar { display: flex; align-items: center; gap: 12px; padding: max(14px, env(safe-area-inset-top)) 0 14px; flex-wrap: wrap; }
 .logo { font-family: var(--serif); font-weight: 900; font-size: 1.4rem; letter-spacing: 0.12em; color: var(--purple); background: none; border: 0; padding: 0; }
 .topbar nav { display: flex; gap: 4px; background: var(--bg-2); padding: 4px; border-radius: 999px; }
 .topbar nav button { border: 0; background: none; padding: 6px 14px; border-radius: 999px; font-weight: 600; color: var(--muted); }
@@ -73,8 +102,17 @@ main { flex: 1; }
 .rank-chip { background: var(--gold-soft); padding: 4px 10px; border-radius: 999px; }
 .icon-btn { border: 0; background: none; font-size: 1.1rem; padding: 4px; border-radius: 8px; }
 @media (max-width: 560px) {
+  .topbar { gap: 8px 10px; padding-bottom: 10px; }
   .topbar nav { order: 3; width: 100%; }
-  .topbar nav button { flex: 1; }
+  .topbar nav button { flex: 1; padding: 8px 10px; }
+  .status { gap: 8px; }
+  /* During a lesson or quiz, keep the bar to one slim row. */
+  .topbar.focused { padding-bottom: 6px; }
+  .topbar.focused .rank-chip { display: none; }
+}
+@media (max-width: 400px) {
+  .rank-name { display: none; }
+  .logo { font-size: 1.2rem; }
 }
 
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); padding: 20px; margin-bottom: 18px; }
@@ -97,6 +135,8 @@ main { flex: 1; }
 .hero { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; border-left: 6px solid var(--purple); }
 .hero > div { flex: 1 1 260px; }
 .hero p { margin: 0; color: var(--muted); }
+.hero p.streak-nudge { margin-top: 10px; color: var(--ink); font-weight: 600; font-size: 0.92rem; background: var(--gold-soft); border-radius: 10px; padding: 6px 10px; width: fit-content; }
+.fold { font-size: 0.85rem; padding: 4px 0; margin-top: 2px; color: var(--purple); }
 .group header { display: flex; gap: 14px; align-items: center; margin-bottom: 14px; }
 .group header p { margin: 0; color: var(--muted); font-size: 0.92rem; }
 .group header > div { flex: 1; }
@@ -129,7 +169,20 @@ main { flex: 1; }
 .progress > div { height: 100%; background: var(--green); border-radius: 999px; transition: width 0.3s; }
 .progress.timer > div { background: var(--gold); transition: width 0.2s linear; }
 .progress.timer.low > div { background: var(--red); }
-.stage-foot { display: flex; gap: 10px; justify-content: flex-end; min-height: 48px; }
+/* The main button stays in reach while feedback grows the card below the fold. */
+.stage-foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  min-height: 48px;
+  margin: 0 -16px;
+  padding: 14px 16px calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(to bottom, transparent, var(--bg) 14px);
+}
+.stage-foot:empty { padding-block: 0; min-height: 0; }
 .stage-foot .btn.primary { flex: 1; }
 .lesson-card, .quiz-card, .results { text-align: center; animation: rise 0.3s both; }
 .card-text { font-size: 1.05rem; text-wrap: pretty; }
@@ -188,8 +241,12 @@ main { flex: 1; }
 .options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 8px 0 12px; }
 .option { position: relative; padding: 14px 10px; font-size: 1.25rem; font-weight: 700; border-radius: 12px; border: 2px solid var(--line); background: var(--bg); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .option.roman { font-family: var(--serif); letter-spacing: 0.05em; font-size: 1.1rem; }
+.kbd-hint { font-size: 0.8rem; margin: 8px 0 0; }
+@media (hover: none) { .kbd-hint { display: none; } }
 .option kbd { position: absolute; top: 4px; left: 8px; font: 600 0.7rem var(--sans); color: var(--muted); opacity: 0.7; }
-@media (hover: none) { .option kbd { display: none; } }
+@media (hover: none) { .kbd-hint { font-size: 0.8rem; margin: 8px 0 0; }
+@media (hover: none) { .kbd-hint { display: none; } }
+.option kbd { display: none; } }
 .option:hover:not(:disabled) { border-color: var(--gold); }
 .option.right { border-color: var(--green); background: var(--green-soft); color: var(--ink); }
 .option.wrong { border-color: var(--red); background: var(--red-soft); animation: shake 0.3s; }
@@ -212,6 +269,15 @@ main { flex: 1; }
 .rewards li { padding: 10px 14px; border-radius: 12px; background: var(--gold-soft); font-weight: 700; animation: rise 0.4s both; }
 .rewards li small { display: block; }
 .rewards .unlock, .rewards .rank { background: var(--green-soft); }
+.misses { margin-top: 18px; text-align: left; }
+.misses h3 { margin: 0 0 8px; text-align: center; }
+.misses ul { list-style: none; margin: 0; padding: 0; }
+.misses li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 4px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.miss-q { font-family: var(--serif); font-weight: 700; overflow-wrap: anywhere; }
+.miss-a { text-align: right; display: flex; flex-direction: column; }
+.miss-a b { font-family: var(--serif); color: var(--green); overflow-wrap: anywhere; }
+.miss-a small { font-size: 0.78rem; }
+.quiz-card.paused { padding-block: 32px; }
 
 /* Practice and profile */
 .panel > p { color: var(--muted); }

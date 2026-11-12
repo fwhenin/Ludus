@@ -1,5 +1,6 @@
 import { GROUPS, Group, Lesson } from '../lib/curriculum';
-import { groupPassed, groupUnlocked, lessonUnlocked, nextUp } from '../lib/game';
+import { useState } from 'react';
+import { groupPassed, groupUnlocked, lessonUnlocked, nextUp, streakAtRisk } from '../lib/game';
 import type { Save } from '../lib/storage';
 import { Laurels } from './shared';
 
@@ -12,6 +13,9 @@ interface Props {
 export function Home({ save, onLesson, onTrial }: Props) {
   const up = nextUp(save);
   const isNew = save.history.length === 0;
+  const atRisk = streakAtRisk(save);
+  // Finished groups fold away so the map opens on what is next.
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   return (
     <div className="home">
       <section className="hero card">
@@ -24,6 +28,11 @@ export function Home({ save, onLesson, onTrial }: Props) {
                 ? 'Pick up where you left off, or replay a lesson for more laurels.'
                 : 'You have passed every trial. Keep sharp with practice and speed rounds.'}
           </p>
+          {atRisk > 0 && (
+            <p className="streak-nudge" role="status">
+              🔥 Finish any lesson, quiz or practice today to keep your {atRisk}-day streak.
+            </p>
+          )}
         </div>
         {up?.lesson && (
           <button type="button" className="btn primary" onClick={() => onLesson(up.lesson!)}>
@@ -41,6 +50,8 @@ export function Home({ save, onLesson, onTrial }: Props) {
         const open = groupUnlocked(save, g);
         const passed = groupPassed(save, g.id);
         const trial = save.trials[g.id];
+        const folded = passed && !expanded[g.id];
+        const done = g.lessons.filter((l) => save.lessons[l.id]).length;
         return (
           <section key={g.id} className={`group card${open ? '' : ' locked'}${passed ? ' passed' : ''}`}>
             <header>
@@ -48,10 +59,21 @@ export function Home({ save, onLesson, onTrial }: Props) {
               <div>
                 <h2>{g.title}</h2>
                 <p>{g.blurb}</p>
+                {passed && (
+                  <button
+                    type="button"
+                    className="link fold"
+                    aria-expanded={!folded}
+                    aria-controls={`lessons-${g.id}`}
+                    onClick={() => setExpanded((e) => ({ ...e, [g.id]: folded }))}
+                  >
+                    {folded ? `Show ${done} lessons ▾` : 'Hide lessons ▴'}
+                  </button>
+                )}
               </div>
               {!open && <span className="lock" aria-label="Locked">🔒</span>}
             </header>
-            <ol className="lessons">
+            <ol className="lessons" id={`lessons-${g.id}`} hidden={folded}>
               {g.lessons.map((l) => {
                 const p = save.lessons[l.id];
                 const unlocked = lessonUnlocked(save, l);

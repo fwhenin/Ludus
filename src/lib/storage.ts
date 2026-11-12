@@ -20,6 +20,8 @@ export interface HistoryEntry {
   passed?: boolean;
 }
 
+export type Theme = 'system' | 'light' | 'dark';
+
 export interface Save {
   v: 1;
   xp: number;
@@ -31,7 +33,7 @@ export interface Save {
   streak: { count: number; best: number; last: string };
   achievements: Record<string, string>;
   speedBest: Record<string, number>;
-  settings: { sound: boolean; haptics: boolean };
+  settings: { sound: boolean; haptics: boolean; theme: Theme };
 }
 
 export function freshSave(): Save {
@@ -46,7 +48,7 @@ export function freshSave(): Save {
     streak: { count: 0, best: 0, last: '' },
     achievements: {},
     speedBest: {},
-    settings: { sound: false, haptics: true },
+    settings: { sound: false, haptics: true, theme: 'system' },
   };
 }
 
@@ -104,6 +106,7 @@ export function sanitize(raw: unknown): Save | null {
     settings: {
       sound: typeof settings.sound === 'boolean' ? settings.sound : base.settings.sound,
       haptics: typeof settings.haptics === 'boolean' ? settings.haptics : base.settings.haptics,
+      theme: (['system', 'light', 'dark'] as const).find((t) => t === settings.theme) ?? base.settings.theme,
     },
   };
 }
@@ -126,15 +129,48 @@ export function persist(save: Save): void {
   }
 }
 
-export function exportSave(save: Save): void {
+function exportBlob(save: Save): { blob: Blob; name: string } {
   const blob = new Blob([JSON.stringify({ app: 'ludus', exportedAt: new Date().toISOString(), save }, null, 2)], {
     type: 'application/json',
   });
+  return { blob, name: `ludus-progress-${new Date().toISOString().slice(0, 10)}.json` };
+}
+
+export function exportSave(save: Save): void {
+  const { blob, name } = exportBlob(save);
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `ludus-progress-${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = name;
+  a.style.display = 'none';
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(a.href);
+  // Revoking straight away can cancel the download in Safari and Firefox.
+  setTimeout(() => {
+    URL.revokeObjectURL(a.href);
+    a.remove();
+  }, 4000);
+}
+
+/** True where the system share sheet can take a file (mostly phones and tablets). */
+export function canShareSave(): boolean {
+  try {
+    if (typeof navigator.share !== 'function' || typeof navigator.canShare !== 'function') return false;
+    const probe = new File(['{}'], 'probe.json', { type: 'application/json' });
+    return navigator.canShare({ files: [probe] });
+  } catch {
+    return false;
+  }
+}
+
+/** Opens the share sheet with the progress file. Resolves false if the user cancelled or it failed. */
+export async function shareSave(save: Save): Promise<boolean> {
+  const { blob, name } = exportBlob(save);
+  try {
+    await navigator.share({ files: [new File([blob], name, { type: 'application/json' })], title: 'Ludus progress' });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function parseImport(text: string): Save | null {

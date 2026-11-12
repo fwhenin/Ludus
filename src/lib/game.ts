@@ -104,6 +104,8 @@ export interface Answer {
   dir: Dir;
   type: QType;
   correct: boolean;
+  /** What the learner answered, for reviewing misses. */
+  given?: string;
 }
 
 export interface QuizResult {
@@ -267,4 +269,9 @@ export function currentStreak(save: Save, now = new Date()): number {
   const y = new Date(now);
   y.setDate(y.getDate() - 1);
   return save.streak.last === dayKey(now) || save.streak.last === dayKey(y) ? save.streak.count : 0;
+}
+
+/** A streak that is still alive but will lapse unless the learner finishes a quiz today. */
+export function streakAtRisk(save: Save, now = new Date()): number {
+  return currentStreak(save, now) > 0 && save.streak.last !== dayKey(now) ? save.streak.count : 0;
 }

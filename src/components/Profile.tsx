@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { hapticsSupported } from '../lib/fx';
 import { ACHIEVEMENTS, RANKS, currentStreak, rankFor } from '../lib/game';
-import { Save, exportSave, freshSave, parseImport } from '../lib/storage';
+import { Save, Theme, canShareSave, exportSave, freshSave, parseImport, shareSave } from '../lib/storage';
 
 export function Profile({ save, setSave }: { save: Save; setSave: (s: Save) => void }) {
   const rank = rankFor(save.xp);
@@ -10,6 +10,8 @@ export function Profile({ save, setSave }: { save: Save; setSave: (s: Save) => v
   const [confirmReset, setConfirmReset] = useState(false);
   const earned = ACHIEVEMENTS.filter((a) => save.achievements[a.id]).length;
   const setting = (key: 'sound' | 'haptics', value: boolean) => setSave({ ...save, settings: { ...save.settings, [key]: value } });
+  const setTheme = (theme: Theme) => setSave({ ...save, settings: { ...save.settings, theme } });
+  const [shareable] = useState(canShareSave);
 
   const onImport = async (f: File | undefined) => {
     if (!f) return;
@@ -89,11 +91,38 @@ export function Profile({ save, setSave }: { save: Save; setSave: (s: Save) => v
           Vibration feedback
           {!hapticsSupported() && <small> (not supported by this browser)</small>}
         </label>
+        <fieldset className="choice theme-choice">
+          <legend>Appearance</legend>
+          <div className="seg">
+            {(
+              [
+                ['system', 'Match device'],
+                ['light', '☀️ Light'],
+                ['dark', '🌙 Dark'],
+              ] as [Theme, string][]
+            ).map(([t, label]) => (
+              <button key={t} type="button" className={save.settings.theme === t ? 'on' : ''} aria-pressed={save.settings.theme === t} onClick={() => setTheme(t)}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </fieldset>
         <h3>Move your progress</h3>
         <p className="hint">Everything is stored only in this browser. Export a file to carry it to another device, then import it there.</p>
         <div className="row">
-          <button type="button" className="btn secondary" onClick={() => exportSave(save)}>
-            Export progress
+          {shareable && (
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={async () => {
+                if (await shareSave(save)) setMsg('Progress file shared.');
+              }}
+            >
+              Share progress
+            </button>
+          )}
+          <button type="button" className="btn secondary" onClick={() => { exportSave(save); setMsg('Progress file saved to your downloads.'); }}>
+            {shareable ? 'Download file' : 'Export progress'}
           </button>
           <button type="button" className="btn secondary" onClick={() => file.current?.click()}>
             Import progress
