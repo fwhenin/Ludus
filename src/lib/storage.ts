@@ -151,9 +151,14 @@ export function exportSave(save: Save): void {
   }, 4000);
 }
 
-/** True where the system share sheet can take a file (mostly phones and tablets). */
+/**
+ * True where the system share sheet can take a file and is worth offering: phones
+ * and tablets. Desktop browsers often report support but then open nothing or fail
+ * quietly, and they already have a plain download, so the button stays hidden there.
+ */
 export function canShareSave(): boolean {
   try {
+    if (typeof window.matchMedia !== 'function' || !window.matchMedia('(pointer: coarse)').matches) return false;
     if (typeof navigator.share !== 'function' || typeof navigator.canShare !== 'function') return false;
     const probe = new File(['{}'], 'probe.json', { type: 'application/json' });
     return navigator.canShare({ files: [probe] });
@@ -162,14 +167,16 @@ export function canShareSave(): boolean {
   }
 }
 
-/** Opens the share sheet with the progress file. Resolves false if the user cancelled or it failed. */
-export async function shareSave(save: Save): Promise<boolean> {
+export type ShareResult = 'shared' | 'cancelled' | 'failed';
+
+/** Opens the share sheet with the progress file. */
+export async function shareSave(save: Save): Promise<ShareResult> {
   const { blob, name } = exportBlob(save);
   try {
     await navigator.share({ files: [new File([blob], name, { type: 'application/json' })], title: 'Ludus progress' });
-    return true;
-  } catch {
-    return false;
+    return 'shared';
+  } catch (e) {
+    return e instanceof DOMException && e.name === 'AbortError' ? 'cancelled' : 'failed';
   }
 }
 

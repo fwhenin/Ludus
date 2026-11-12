@@ -115,7 +115,13 @@ export function Profile({ save, setSave }: { save: Save; setSave: (s: Save) => v
               type="button"
               className="btn secondary"
               onClick={async () => {
-                if (await shareSave(save)) setMsg('Progress file shared.');
+                const result = await shareSave(save);
+                if (result === 'shared') setMsg('Progress file shared.');
+                else if (result === 'failed') {
+                  // Never leave the tap doing nothing: fall back to a download.
+                  exportSave(save);
+                  setMsg('Sharing is not available here, so the progress file was saved to your downloads instead.');
+                }
               }}
             >
               Share progress
